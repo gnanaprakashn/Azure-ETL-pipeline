@@ -1,0 +1,92 @@
+# Databricks PySpark ETL Script
+# Reads raw data from Azure Blob -> Transforms -> Writes normalized tables back to Blob
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, monotonically_increasing_id, trim
+from pyspark.sql.types import *
+
+spark = SparkSession.builder.appName("AzureBlobNormalization").getOrCreate()
+
+# -----------------------------------------
+# 1️⃣ READ RAW DATA FROM BLOB STORAGE
+# -----------------------------------------
+
+raw_path = "wasbs://raw@yourstorageaccount.blob.core.windows.net/sales_raw.csv"
+
+df_raw = spark.read.format("csv") \
+    .option("header", "true") \
+    .option("inferSchema", "true") \
+    .load(raw_path)
+
+print("RAW DATA:")
+df_raw.show(5)
+
+# Example raw table columns:
+# [customer_name, customer_email, product_name, category, price, quantity, city, state, order_date]
+
+# -----------------------------------------
+# 2️⃣ CLEANING & NORMALIZATION
+# -----------------------------------------
+
+df_clean = df_raw.select(
+    trim(col("customer_name")).alias("customer_name"),
+    trim(col("customer_email")).alias("customer_email"),
+    trim(col("product_name")).alias("product_name"),
+    trim(col("category")).alias("category"),
+    col("price").cast("double"),
+    col("quantity").cast("int"),
+    trim(col("city")).alias("city"),
+    trim(col("state")).alias("state"),
+    col("order_date")
+)
+
+# -----------------------------------------
+# 3️⃣ CREATE DIMENSION TABLES
+# -----------------------------------------
+
+## DIM CUSTOMER
+dim_customer = df_clean.select("customer_name", "customer_email") \
+    .dropDuplicates() \
+    .withColumn("customer_id", monotonically_increasing_id())
+
+## DIM PRODUCT
+dim_product = df_clean.select("product_name", "category", "price") \
+    .dropDuplicates() \
+    .withColumn("product_id", monotonically_increasing_id())
+
+## DIM LOCATION
+dim_location = df_clean.select("city", "state") \
+    .dropDuplicates() \
+    .withColumn("location_id", monotonically_increasing_id())
+
+# -----------------------------------------
+# 4️⃣ CREATE FACT TABLE (JOIN ON DIMENSIONS)
+# -----------------------------------------
+
+fact_sales = df_clean \
+    .join(dim_customer, ["customer_name", "customer_email"], "inner") \
+    .join(dim_product, ["product_name", "category", "price"], "inner") \
+    .join(dim_location, ["city", "state"], "inner") \
+    .select(
+        "customer_id",
+        "product_id",
+        "location_id",
+        "quantity",
+        "order_date"
+    )
+
+# -----------------------------------------
+# 5️⃣ WRITE NORMALIZED TABLES TO BLOB STORAGE
+# -----------------------------------------
+
+dim_customer_path = "wasbs://processed@yourstorageaccount.blob.core.windows.net/dim_customer"
+dim_product_path  = "wasbs://processed@yourstorageaccount.blob.core.windows.net/dim_product"
+dim_location_path = "wasbs://processed@yourstorageaccount.blob.core.windows.net/dim_location"
+fact_sales_path   = "wasbs://processed@yourstorageaccount.blob.core.windows.net/fact_sales"
+
+dim_customer.write.mode("overwrite").parquet(dim_customer_path)
+dim_product.write.mode("overwrite").parquet(dim_product_path)
+dim_location.write.mode("overwrite").parquet(dim_location_path)
+fact_sales.write.mode("overwrite").parquet(fact_sales_path)
+
+print("Data written successfully to processed Blob container!")

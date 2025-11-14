@@ -1,0 +1,177 @@
+Azure ETL Pipeline – Project Explanation (Text File Version)
+Project Overview
+
+This project demonstrates a complete ETL data engineering workflow on Azure, where denormalized tables stored in SQL Server (SSMS) are transformed into a normalized, clean, and star-schema–ready structure using Azure Data Factory (ADF) and Azure Databricks.
+The pipeline extracts raw data from SSMS, processes it in Databricks, stores intermediate outputs in Azure Blob Storage, and finally loads the transformed data back into SSMS.
+
+This project follows a real-world enterprise ETL design.
+
+Why This Pipeline?
+
+The source table in SSMS contained denormalized data with multiple repeating attributes, mixed columns, and unstructured grouping.
+To use the data effectively for analytics or BI, we must:
+
+Normalize the structure
+
+Create clean dimension & fact tables
+
+Design a star schema
+
+Ensure clean, validated, structured data
+
+This pipeline automates that end-to-end.
+
+Tools & Services Used
+
+Azure Data Factory (ADF) – Orchestration
+
+Azure SQL Server / SSMS – Source & target database
+
+Azure Blob Storage – Staging & processed zones
+
+Azure Databricks (PySpark) – Data transformation
+
+Linked Services – Secure connections
+
+Copy Activity – Data movement
+
+PySpark – Normalization logic
+
+Pipeline Workflow (End-to-End)
+1. Source Data – SSMS (Denormalized Table)
+
+Data stored in a single, wide, denormalized table
+
+Columns contain repetitive values, unnecessary fields, and improper grouping
+
+Example issues:
+
+Many-to-many attributes mixed in one row
+
+Duplicate columns
+
+No proper primary/foreign keys
+
+Flattened data unsuitable for reporting
+
+2. Create Linked Services in Azure Data Factory
+
+ADF requires secure connections.
+
+Linked Services created:
+
+Azure SQL Database (SSMS)
+
+Azure Blob Storage
+
+Azure Databricks Workspace
+
+These allow ADF to communicate with all components of the pipeline.
+
+3. Extract Data from SSMS → Azure Blob Storage
+
+Using Copy Activity in ADF:
+
+Source: Azure SQL (SSMS database)
+
+Sink: Azure Blob Storage (CSV/Parquet)
+
+Staging folder example:
+
+blob/staging/raw-data/
+
+
+This moves the denormalized table into Blob for processing.
+
+4. Transform Data in Azure Databricks
+
+Databricks reads raw data from Blob Storage:
+
+Clean missing values
+
+Remove duplicates
+
+Split large tables into dimension and fact components
+
+Normalize repeated attributes
+
+Convert data into star schema:
+
+dim_customer
+
+dim_product
+
+dim_location
+
+fact_sales
+
+Add surrogate keys
+
+Convert formats (CSV → Parquet for optimization)
+
+After transformation, Databricks writes cleaned data into:
+
+blob/processed/normalized/
+
+5. Load Transformed Data Back to SSMS (Azure SQL Server)
+
+Using another Copy Activity in ADF:
+
+Source: Processed Blob folder
+
+Sink: Azure SQL Database
+
+Destination tables:
+
+Cleaned dimensions
+
+Fact table
+
+ADF automatically maps schema & loads data.
+
+6. Final Result
+
+You get:
+
+A fully normalized dataset
+
+Clean dimension tables
+
+A fact table ready for BI tools
+
+Automated ETL workflow
+
+Blob → Databricks → SSMS round trip completed
+
+Scalable & production-friendly architecture
+
+Additional Components Added
+
+✔ Data Validation in Databricks (schema enforcement)
+✔ Error handling & logging in ADF pipeline
+✔ Parameterized pipeline for reusability
+✔ Folder-based logical separation:
+
+raw/
+
+processed/
+
+final/
+
+✔ Use of ADF triggers (manual/time-based schedules)
+
+Skills Demonstrated
+
+Building ETL pipelines on Azure
+
+ADF Linked Services, Datasets, Pipelines
+
+Blob Storage as landing & processing layer
+
+Databricks PySpark transformations
+
+Normalization & star schema modeling
+
+End-to-end automation from SSMS → Blob → Databricks → SSMS
+
+Real data engineering workflow
