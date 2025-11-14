@@ -9,7 +9,8 @@ This is a real-world enterprise ETL pattern used by data engineering teams.
 
 ## 🏗️ Architecture
 
-![Azure ETL Architecture](Azure ETL pipeline.png)
+
+<img src="Azure ETL pipeline.png" width="850"/>
 
 **Flow:**  
 SSMS → ADF Copy Activity → Blob Storage (Raw) → Databricks Transform → Blob Storage (Processed) → ADF Copy Activity → SSMS (Star Schema)
